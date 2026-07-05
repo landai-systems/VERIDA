@@ -1,4 +1,4 @@
-.PHONY: up down check test lint migrate shell build-fe install
+.PHONY: up down check test lint migrate shell build-fe install seed lighthouse
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 up:
@@ -41,3 +41,17 @@ build-fe:
 install:
 	cd backend && pip install -e ".[dev]"
 	cd frontend && npm install
+
+# ── Seed & Lighthouse ─────────────────────────────────────────────────────────
+seed:
+	docker compose exec api python scripts/seed.py
+
+lighthouse:
+	@echo "Lighthouse CI instructions:"
+	@echo "  1. Open Chrome → DevTools → Lighthouse tab"
+	@echo "  2. URL: http://localhost:5173"
+	@echo "  3. Device: Mobile, Categories: Performance + Accessibility + PWA"
+	@echo "  4. Target: ≥90 on all three"
+	@echo ""
+	@echo "CLI alternative (requires lighthouse npm package):"
+	@echo "  npx lighthouse http://localhost:5173 --view --preset=perf --form-factor=mobile"

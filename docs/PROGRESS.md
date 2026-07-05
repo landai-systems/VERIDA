@@ -228,4 +228,65 @@ Newest entries first.
 
 ---
 
+## 2026-07-05 — M4 Polish & Demo Complete
+
+**By:** automated M4 agent  
+**Status:** ✅
+
+### What was done
+
+**Frontend UI (complete — React 18 + TypeScript + Vite + Tailwind):**
+- `App.tsx` — React Router v6, lazy-loaded pages, RequireAuth guard, ErrorBoundary
+- Pages: LoginPage, RegisterPage, CapturePage, FeedPage, CirclesPage, ProfilePage, ArchivePage, SettingsPage
+- Components: Layout (bottom nav), PostCard (attestation badge, reactions, comments), CameraCapture (getUserMedia, permission fallback, text mode), ReactionBar (5 emoji, no counters), CommentSection (500 char limit), AttestationBadge (✓/⚠/⏳), StreakBadge (🔥 N, no deadline), EmptyState (inline SVG), ErrorBoundary (graceful), SessionNudge (10 min modal)
+- API client (axios, JWT auto-attach, auto-refresh on 401, queue-based retry)
+- Zustand stores: `authStore` (persist, login/logout/register/restoreSession) + `feedStore` (posts, pagination, hasMomentToday, optimistic reactions)
+- PWA: manifest.json complete + Workbox service worker via vite-plugin-pwa
+
+**UX features:**
+- Reciprocity gate: "Post your moment first" if no moment today
+- Session nudge: modal after 10 min continuous use ("Take a break? 🌿")
+- "You're all caught up" 🌿 end-of-feed marker + infinite scroll via IntersectionObserver
+- Archive grid: monthly grouping of personal posts
+- Dark/light mode (Tailwind prefers-color-scheme + dark: variants)
+- Accessibility: ARIA labels, roles, aria-live, aria-pressed on all interactive elements
+
+**Seed script (`scripts/seed.py`):**
+- Faker(seed=42) — fully deterministic, same data every run
+- Creates: 10 users, 3 circles with memberships, 30 posts (past 30 days), 20 reactions, 15 comments, 2 consent records/user, streaks
+- All posts have attestation status=passed
+- Uses picsum.photos for placeholder media, pravatar.cc for avatars
+- Prints: "Seeded: 10 users, 30 posts, 3 circles"
+
+**Docker:**
+- `backend/Dockerfile` — multi-stage (builder + final), non-root user, uvicorn
+- `frontend/Dockerfile.dev` — node:20-alpine, `--host 0.0.0.0` for Docker exposure
+
+**Docs:**
+- `docs/DEMO.md` — 12-step demo script with talking points and screenshot placeholders
+- `docs/adr/004-frontend-architecture.md` — ADR: React + Zustand + React Router (why not Redux)
+- `docs/BACKLOG.md` — M4 items marked ✅ Done
+- `docs/PROGRESS.md` — this entry
+
+**Tests:**
+- `backend/tests/test_seed.py` — import test, seed() callable with mock session, verifies counts and commit
+
+**Makefile:**
+- `seed` target: `docker compose exec api python scripts/seed.py`
+- `lighthouse` target: instructions for running Lighthouse CI
+
+### Build verification
+- `npm run type-check` — passes (0 errors)
+- `npm run build` — passes, 996ms, PWA precache 17 entries
+- Bundle: vendor chunk 53 KB gzipped, all pages 1–3.5 KB gzipped each
+
+### Key decisions
+
+- **Zustand over Redux** — 1/5th the boilerplate for 2 stores; see ADR 004
+- **Lazy loading all pages** — `lazy()` + `<Suspense>` splits each page; vendor chunk separate
+- **No public reaction counters** — consistent with M3 design; ReactionBar shows `aria-pressed` state only
+- **Reciprocity gate in frontend** — `has_moment_today` from feed API, gate rendered before feed
+- **Session nudge is frontend-only** — no backend event; `setTimeout(10min)` re-arms on dismiss
+- **Seed uses sync SQLAlchemy** — seed script doesn't need async; simpler and more debuggable
+
 <!-- Add new entries above this line -->

@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies first (layer cache)
+COPY package*.json ./
+RUN npm ci
+
+# Copy source
+COPY . .
+
+EXPOSE 5173
+
+# Vite dev server — host 0.0.0.0 so it's reachable from Docker host
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
