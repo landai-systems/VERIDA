@@ -46,6 +46,7 @@ def app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-that-is-at-least-32-chars-long!")
     monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://verida:verida@localhost:5432/verida_test")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/1")
+    monkeypatch.setenv("EMAIL_FROM", "noreply@verida.example.com")
 
     from verida.main import create_app
     return create_app()

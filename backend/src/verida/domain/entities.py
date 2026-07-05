@@ -64,6 +64,14 @@ class CircleRole(str, Enum):
     MEMBER = "member"
 
 
+class InviteStatus(str, Enum):
+    """Status of a circle membership invitation."""
+
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
 # ── Core entities ─────────────────────────────────────────────────────────────
 
 
@@ -114,6 +122,8 @@ class CircleMembership:
     circle_id: uuid.UUID = field(default_factory=_uuid7)
     user_id: uuid.UUID = field(default_factory=_uuid7)
     role: CircleRole = CircleRole.MEMBER
+    invite_status: InviteStatus = InviteStatus.ACCEPTED
+    invited_by: Optional[uuid.UUID] = None
     joined_at: datetime = field(default_factory=_utcnow)
 
 
@@ -123,13 +133,14 @@ class DailyMoment:
 
     A DailyMoment represents the act of opening the capture window.
     One DailyMoment can have at most one associated Post per day per user.
-    The ``capture_token`` is a short-lived token issued by the API when the
-    user initiates capture; it is validated when the Post is submitted.
+    The ``capture_token`` is a short-lived HMAC-signed token issued by the API
+    when the user initiates capture; it is validated when the Post is submitted.
+    The capture window is 10 minutes; posts submitted after this are marked late.
     """
 
     id: uuid.UUID = field(default_factory=_uuid7)
     user_id: uuid.UUID = field(default_factory=_uuid7)
-    capture_token: str = ""  # HMAC-signed, expires in 5 minutes
+    capture_token: str = ""  # HMAC-signed, expires in 10 minutes
     initiated_at: datetime = field(default_factory=_utcnow)
     completed_at: Optional[datetime] = None
     browser_fingerprint_hash: str = ""  # SHA-256 of client signals, NOT PII
@@ -163,6 +174,8 @@ class Post:
     ``capture_metadata`` stores browser-reported signals (resolution, duration,
     MIME type).  It is used by the authenticity heuristics and is NOT shown
     to other users.
+    ``is_late`` is True if the post was submitted after the 10-minute capture
+    window defined by the associated DailyMoment.
     """
 
     id: uuid.UUID = field(default_factory=_uuid7)
@@ -175,6 +188,7 @@ class Post:
     visibility: PostVisibility = PostVisibility.CIRCLES
     attestation: Optional[Attestation] = None
     capture_metadata: dict[str, object] = field(default_factory=dict)
+    is_late: bool = False     # True if submitted after 10-minute capture window
     published_at: Optional[datetime] = None
     created_at: datetime = field(default_factory=_utcnow)
     updated_at: datetime = field(default_factory=_utcnow)
@@ -193,4 +207,20 @@ class RefreshToken:
     token_hash: str = ""  # SHA-256 of the raw token — never stored plain
     expires_at: datetime = field(default_factory=_utcnow)
     revoked: bool = False
+    created_at: datetime = field(default_factory=_utcnow)
+
+
+@dataclass
+class EmailVerification:
+    """An email verification token sent to a user.
+
+    The token is a short-lived random string; only its SHA-256 hash is stored.
+    On successful verification, ``used_at`` is set and the User is marked verified.
+    """
+
+    id: uuid.UUID = field(default_factory=_uuid7)
+    user_id: uuid.UUID = field(default_factory=_uuid7)
+    token_hash: str = ""      # SHA-256 of raw token — never stored plain
+    expires_at: datetime = field(default_factory=_utcnow)
+    used_at: Optional[datetime] = None
     created_at: datetime = field(default_factory=_utcnow)

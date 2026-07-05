@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     smtp_port: int = 1025
     smtp_username: str = ""
     smtp_password: str = ""
-    email_from: EmailStr = "noreply@verida.local"  # type: ignore[assignment]
+    email_from: EmailStr = "noreply@verida.example.com"  # type: ignore[assignment]
 
     # ── Observability ──────────────────────────────────────────────────────────
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"

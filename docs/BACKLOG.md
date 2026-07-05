@@ -25,16 +25,16 @@ Priority: P0 (must, M1) → P1 (should, M2) → P2 (nice-to-have, M3+)
 
 | # | Priority | Item | Status |
 |---|----------|------|--------|
-| 11 | P0 | SQLAlchemy async models + Alembic migrations | ⬜ Open |
-| 12 | P0 | Repository pattern implementations | ⬜ Open |
-| 13 | P0 | Daily capture initiation endpoint | ⬜ Open |
-| 14 | P0 | Media upload endpoint (presigned URL or direct) | ⬜ Open |
-| 15 | P0 | Post submission + attestation trigger | ⬜ Open |
-| 16 | P0 | Circle CRUD endpoints | ⬜ Open |
-| 17 | P0 | Circle membership (invite, accept, remove) | ⬜ Open |
-| 18 | P0 | Post feed (paginated, circle-filtered) | ⬜ Open |
-| 19 | P0 | Email verification flow | ⬜ Open |
-| 20 | P0 | arq background worker for attestation | ⬜ Open |
+| 11 | P0 | SQLAlchemy async models + Alembic migrations | ✅ Done |
+| 12 | P0 | Repository pattern implementations | ✅ Done |
+| 13 | P0 | Daily capture initiation endpoint | ✅ Done |
+| 14 | P0 | Media upload endpoint (presigned URL or direct) | ✅ Done |
+| 15 | P0 | Post submission + attestation trigger | ✅ Done |
+| 16 | P0 | Circle CRUD endpoints | ✅ Done |
+| 17 | P0 | Circle membership (invite, accept, remove) | ✅ Done |
+| 18 | P0 | Post feed (paginated, circle-filtered, reciprocity-gated) | ✅ Done |
+| 19 | P0 | Email verification flow | ✅ Done |
+| 20 | P0 | arq background worker for attestation | ✅ Done |
 | 21 | P1 | Frontend: login / register pages | ⬜ Open |
 | 22 | P1 | Frontend: capture flow (getUserMedia) | ⬜ Open |
 | 23 | P1 | Frontend: feed page | ⬜ Open |
