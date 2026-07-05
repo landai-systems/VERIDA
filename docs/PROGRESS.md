@@ -5,6 +5,112 @@ Newest entries first.
 
 ---
 
+## 2026-07-05 — M3 Trust & Compliance Complete
+
+**By:** automated M3 agent  
+**Status:** ✅
+
+### What was done
+
+**Authenticity upgrades:**
+- `HeuristicAuthenticityChecker` extended with 9 heuristics (from 5): added
+  perceptual-hash replay detection (Redis), timing-window validation, EXIF absence
+  check, capture metadata completeness scoring, gallery-upload detection
+- `AttestationUseCase` — new orchestrator use case for attesting posts
+- arq `attest_post` worker now passes Redis client for phash dedup
+
+**Consent management (GDPR Art. 7):**
+- New `ConsentRecord` entity (user_id, consent_type, version, text_version, ip_hash)
+- `ConsentRecordModel` + `SqlConsentRepository`
+- `RecordConsentUseCase`, `GetConsentHistoryUseCase`, `WithdrawConsentUseCase`
+- `POST /api/v1/consent`, `GET /api/v1/consent`, `POST /api/v1/consent/withdraw`
+- Consent records are append-only (audit trail); withdrawal sets `withdrawn_at`, never deletes
+- `text_version` = SHA-256 of the exact consent text shown — proof of what user agreed to
+- IP hashed as /24 prefix only — no full IP stored
+
+**GDPR data portability + erasure:**
+- `ExportUserDataUseCase` — collects all user data (profile, posts, circles, comments,
+  reactions, consent records, streak) into structured JSON (no argon2_hash exported)
+- `DeleteUserDataUseCase` — hard delete with cascade + schedules `purge_deleted_user_data` arq job
+- `POST /api/v1/gdpr/export` — returns JSON file download
+- `DELETE /api/v1/gdpr/me` — requires `{"confirm": "DELETE MY ACCOUNT"}` to prevent accidents
+- `purge_deleted_user_data` arq task added to `WorkerSettings`
+
+**Rate limiting:**
+- `SlidingWindowRateLimiter` — Redis sorted-set sliding window, generic error messages (no user enumeration)
+- `@rate_limit(requests, window_seconds, key_prefix)` decorator for route handlers
+- IP truncated to /24 for rate-limit keys
+
+**Security headers:**
+- `SecurityHeadersMiddleware` — added to app startup
+- Headers: HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, CSP (no unsafe-inline), Permissions-Policy
+- CSP: camera/microphone `self` (needed for capture), geolocation explicitly blocked
+
+**Reactions:**
+- `Reaction` entity + `ReactionModel` (unique constraint: one emoji per user per post)
+- `SqlReactionRepository`
+- `AddReactionUseCase` (idempotent), `RemoveReactionUseCase`, `GetReactionsUseCase`
+- `POST/DELETE /api/v1/posts/{id}/reactions` — NO public counters, only user's own reactions
+- Warm emoji set: ❤️ 😊 🔥 🌟 🤗 (no negative reactions)
+
+**Comments:**
+- `Comment` entity + `CommentModel` (body: String(500), soft-delete via deleted_at)
+- `SqlCommentRepository`
+- `AddCommentUseCase`, `DeleteCommentUseCase`, `ListCommentsUseCase`
+- `GET/POST /api/v1/posts/{id}/comments`, `DELETE /api/v1/posts/{id}/comments/{id}`
+- Plain-text only, max 500 chars, author-deletable
+
+**Streaks:**
+- `UserStreak` entity + `UserStreakModel` + `SqlStreakRepository`
+- `UpdateStreakUseCase` — grace days (max 2/month), monthly reset, NO guilt copy
+- `GetStreakUseCase`
+- `GET /api/v1/me/streak` — returns current/longest streak, NO countdown messaging
+
+**Database migration:**
+- Alembic `0002_consent_reactions_comments_streaks.py`
+
+**Documentation:**
+- `PRIVACY.md` — complete: consent flows, retention schedules, Art. 17/20 implementation, German summary
+- `DATA_MAP.md` — ConsentRecord, Reaction, Comment, Streak added
+- `THREAT_MODEL.md` — STRIDE updated with M3 attack surfaces
+- `ENGAGEMENT.md` — streak mechanics, grace-day rationale, ethical principles
+- `TRUST_MODEL.md` — upgraded heuristics documented with honest limits
+- `BACKLOG.md` — M3 items marked ✅ Done
+- `docs/adr/003-consent-model.md` — ADR for versioned consent
+
+**Tests (unit, mock-only, no DB required):**
+- `test_consent.py` — record, history, withdraw, text_version hashing, append-only
+- `test_gdpr.py` — export completeness, cascade delete, purge job scheduling
+- `test_reactions.py` — add, remove, idempotent, NO public counters enforced
+- `test_comments.py` — add, delete, length limit, list excludes deleted
+- `test_streaks.py` — increment, grace days, monthly reset, longest tracking
+
+### Key decisions
+
+- Consent records are **append-only**: withdrawal adds `withdrawn_at`, never deletes.
+  This preserves the Art. 5(2) accountability audit trail.
+- Reaction counters are **private**: `GetReactionsUseCase` returns only the current user's
+  reactions. Public counts create competition; the spec forbids them in MVP.
+- Streaks are **positive-only**: API response omits countdown/deadline fields.
+  See `docs/ENGAGEMENT.md` for ethical rationale.
+- Rate-limit errors use **generic messages** — "Too many requests" only, never "email not found".
+  This prevents user enumeration via timing/response.
+- IP addresses are truncated to **/24 prefix** before hashing in both rate-limit keys and
+  consent records. Full IPs are never stored.
+- CSP forbids `unsafe-inline` — required for M3 security hardening.
+- GDPR erasure requires explicit confirmation string `"DELETE MY ACCOUNT"` to prevent
+  accidental account deletion.
+
+### Not done in M3 (deferred to M4+)
+
+- Frontend integration (reactions UI, comment threads, streak display)
+- Push notifications for daily prompts
+- Media purge from object storage (purge worker stub only in MVP)
+- Admin moderation dashboard
+- Email digest notifications
+
+---
+
 ## 2026-07-05 — M2 Core Loop Complete
 
 **By:** automated M2 agent

@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 
 from verida.config import get_settings
 from verida.api.v1.router import api_v1_router
+from verida.infrastructure.security_headers import SecurityHeadersMiddleware
 
 logger = structlog.get_logger(__name__)
 
@@ -83,6 +84,12 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.environment != "production" else None,
         openapi_url="/openapi.json" if settings.environment != "production" else None,
         lifespan=lifespan,
+    )
+
+    # ── Security headers (M3) ─────────────────────────────────────────────────
+    app.add_middleware(
+        SecurityHeadersMiddleware,
+        environment=settings.environment,
     )
 
     # ── CORS ──────────────────────────────────────────────────────────────────

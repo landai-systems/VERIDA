@@ -24,23 +24,33 @@ from verida.domain.entities import (
     Circle,
     CircleMembership,
     CircleRole,
+    Comment,
+    ConsentRecord,
+    ConsentType,
     DailyMoment,
     EmailVerification,
     InviteStatus,
     Post,
     PostVisibility,
+    Reaction,
+    ReactionEmoji,
     RefreshToken,
     User,
+    UserStreak,
 )
 from verida.infrastructure.db.models import (
     AttestationModel,
     CircleMembershipModel,
     CircleModel,
+    CommentModel,
+    ConsentRecordModel,
     DailyMomentModel,
     EmailVerificationModel,
     PostModel,
+    ReactionModel,
     RefreshTokenModel,
     UserModel,
+    UserStreakModel,
 )
 
 
@@ -643,3 +653,283 @@ class SqlAttestationRepository:
             existing.checked_at = attestation.checked_at
         else:
             self._session.add(_attestation_from_entity(attestation))
+
+
+# ── M3 Repository implementations ─────────────────────────────────────────────
+
+
+def _consent_record_to_entity(m: ConsentRecordModel) -> ConsentRecord:
+    return ConsentRecord(
+        id=m.id,
+        user_id=m.user_id,
+        consent_type=ConsentType(m.consent_type),
+        version=m.version,
+        text_version=m.text_version,
+        granted_at=m.granted_at,
+        withdrawn_at=m.withdrawn_at,
+        ip_hash=m.ip_hash,
+        created_at=m.created_at,
+    )
+
+
+def _consent_record_from_entity(r: ConsentRecord) -> ConsentRecordModel:
+    return ConsentRecordModel(
+        id=r.id,
+        user_id=r.user_id,
+        consent_type=r.consent_type.value,
+        version=r.version,
+        text_version=r.text_version,
+        granted_at=r.granted_at,
+        withdrawn_at=r.withdrawn_at,
+        ip_hash=r.ip_hash,
+        created_at=r.created_at,
+    )
+
+
+def _reaction_to_entity(m: ReactionModel) -> Reaction:
+    return Reaction(
+        id=m.id,
+        post_id=m.post_id,
+        user_id=m.user_id,
+        emoji=ReactionEmoji(m.emoji),
+        created_at=m.created_at,
+    )
+
+
+def _reaction_from_entity(r: Reaction) -> ReactionModel:
+    return ReactionModel(
+        id=r.id,
+        post_id=r.post_id,
+        user_id=r.user_id,
+        emoji=r.emoji.value,
+        created_at=r.created_at,
+    )
+
+
+def _comment_to_entity(m: CommentModel) -> Comment:
+    return Comment(
+        id=m.id,
+        post_id=m.post_id,
+        author_id=m.author_id,
+        body=m.body,
+        created_at=m.created_at,
+        deleted_at=m.deleted_at,
+    )
+
+
+def _comment_from_entity(c: Comment) -> CommentModel:
+    return CommentModel(
+        id=c.id,
+        post_id=c.post_id,
+        author_id=c.author_id,
+        body=c.body,
+        created_at=c.created_at,
+        deleted_at=c.deleted_at,
+    )
+
+
+def _streak_to_entity(m: UserStreakModel) -> UserStreak:
+    return UserStreak(
+        user_id=m.user_id,
+        current_streak=m.current_streak,
+        longest_streak=m.longest_streak,
+        grace_days_used_this_month=m.grace_days_used_this_month,
+        last_post_date=m.last_post_date,
+        grace_month=m.grace_month,
+        updated_at=m.updated_at,
+    )
+
+
+def _streak_from_entity(s: UserStreak) -> UserStreakModel:
+    return UserStreakModel(
+        user_id=s.user_id,
+        current_streak=s.current_streak,
+        longest_streak=s.longest_streak,
+        grace_days_used_this_month=s.grace_days_used_this_month,
+        last_post_date=s.last_post_date,
+        grace_month=s.grace_month,
+        updated_at=s.updated_at,
+    )
+
+
+class SqlConsentRepository:
+    """SQLAlchemy implementation of consent record storage."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def save(self, record: ConsentRecord) -> None:
+        existing = await self._session.get(ConsentRecordModel, record.id)
+        if existing:
+            # Allow update for withdrawal (withdrawn_at)
+            existing.withdrawn_at = record.withdrawn_at
+        else:
+            self._session.add(_consent_record_from_entity(record))
+
+    async def list_for_user(
+        self,
+        user_id: uuid.UUID,
+        consent_type: "ConsentType | None" = None,
+    ) -> list[ConsentRecord]:
+        stmt = (
+            select(ConsentRecordModel)
+            .where(ConsentRecordModel.user_id == user_id)
+            .order_by(ConsentRecordModel.created_at.asc())
+        )
+        if consent_type is not None:
+            stmt = stmt.where(ConsentRecordModel.consent_type == consent_type.value)
+        rows = (await self._session.scalars(stmt)).all()
+        return [_consent_record_to_entity(row) for row in rows]
+
+    async def delete_for_user(self, user_id: uuid.UUID) -> None:
+        stmt = delete(ConsentRecordModel).where(ConsentRecordModel.user_id == user_id)
+        await self._session.execute(stmt)
+
+
+class SqlReactionRepository:
+    """SQLAlchemy implementation of reaction storage."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def get(
+        self,
+        post_id: uuid.UUID,
+        user_id: uuid.UUID,
+        emoji: ReactionEmoji,
+    ) -> Reaction | None:
+        stmt = select(ReactionModel).where(
+            and_(
+                ReactionModel.post_id == post_id,
+                ReactionModel.user_id == user_id,
+                ReactionModel.emoji == emoji.value,
+            )
+        )
+        result = await self._session.scalar(stmt)
+        return _reaction_to_entity(result) if result else None
+
+    async def save(self, reaction: Reaction) -> None:
+        existing = await self._session.get(ReactionModel, reaction.id)
+        if not existing:
+            self._session.add(_reaction_from_entity(reaction))
+
+    async def delete(self, reaction_id: uuid.UUID) -> None:
+        existing = await self._session.get(ReactionModel, reaction_id)
+        if existing:
+            await self._session.delete(existing)
+
+    async def list_by_user_on_post(
+        self,
+        post_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> list[Reaction]:
+        stmt = select(ReactionModel).where(
+            and_(
+                ReactionModel.post_id == post_id,
+                ReactionModel.user_id == user_id,
+            )
+        )
+        rows = (await self._session.scalars(stmt)).all()
+        return [_reaction_to_entity(row) for row in rows]
+
+    async def list_by_user(
+        self,
+        user_id: uuid.UUID,
+        limit: int = 1000,
+    ) -> list[Reaction]:
+        stmt = (
+            select(ReactionModel)
+            .where(ReactionModel.user_id == user_id)
+            .order_by(ReactionModel.created_at.desc())
+            .limit(limit)
+        )
+        rows = (await self._session.scalars(stmt)).all()
+        return [_reaction_to_entity(row) for row in rows]
+
+    async def delete_all_by_user(self, user_id: uuid.UUID) -> None:
+        stmt = delete(ReactionModel).where(ReactionModel.user_id == user_id)
+        await self._session.execute(stmt)
+
+
+class SqlCommentRepository:
+    """SQLAlchemy implementation of comment storage."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def get_by_id(self, comment_id: uuid.UUID) -> Comment | None:
+        result = await self._session.get(CommentModel, comment_id)
+        return _comment_to_entity(result) if result else None
+
+    async def save(self, comment: Comment) -> None:
+        existing = await self._session.get(CommentModel, comment.id)
+        if existing:
+            existing.body = comment.body
+            existing.deleted_at = comment.deleted_at
+        else:
+            self._session.add(_comment_from_entity(comment))
+
+    async def list_for_post(
+        self,
+        post_id: uuid.UUID,
+        limit: int = 50,
+        offset: int = 0,
+        include_deleted: bool = False,
+    ) -> list[Comment]:
+        stmt = (
+            select(CommentModel)
+            .where(CommentModel.post_id == post_id)
+            .order_by(CommentModel.created_at.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+        if not include_deleted:
+            stmt = stmt.where(CommentModel.deleted_at.is_(None))
+        rows = (await self._session.scalars(stmt)).all()
+        return [_comment_to_entity(row) for row in rows]
+
+    async def list_by_author(
+        self,
+        author_id: uuid.UUID,
+        limit: int = 1000,
+    ) -> list[Comment]:
+        stmt = (
+            select(CommentModel)
+            .where(CommentModel.author_id == author_id)
+            .order_by(CommentModel.created_at.desc())
+            .limit(limit)
+        )
+        rows = (await self._session.scalars(stmt)).all()
+        return [_comment_to_entity(row) for row in rows]
+
+    async def delete_all_by_author(self, author_id: uuid.UUID) -> None:
+        stmt = delete(CommentModel).where(CommentModel.author_id == author_id)
+        await self._session.execute(stmt)
+
+
+class SqlStreakRepository:
+    """SQLAlchemy implementation of streak tracking."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def get_for_user(self, user_id: uuid.UUID) -> UserStreak | None:
+        result = await self._session.get(UserStreakModel, user_id)
+        return _streak_to_entity(result) if result else None
+
+    async def save(self, streak: UserStreak) -> None:
+        existing = await self._session.get(UserStreakModel, streak.user_id)
+        if existing:
+            existing.current_streak = streak.current_streak
+            existing.longest_streak = streak.longest_streak
+            existing.grace_days_used_this_month = streak.grace_days_used_this_month
+            existing.last_post_date = streak.last_post_date
+            existing.grace_month = streak.grace_month
+            existing.updated_at = streak.updated_at
+        else:
+            self._session.add(_streak_from_entity(streak))
+
+    async def delete_for_user(self, user_id: uuid.UUID) -> None:
+        stmt = delete(UserStreakModel).where(UserStreakModel.user_id == user_id)
+        await self._session.execute(stmt)
+

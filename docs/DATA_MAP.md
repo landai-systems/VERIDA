@@ -1,7 +1,7 @@
 # Data Map — VERIDA Data Inventory
 
 **Purpose:** Fulfils GDPR Article 30 (Records of Processing Activities) obligation.  
-**Last updated:** 2026-07-05  
+**Last updated:** 2026-07-05 (M3)  
 **Owner:** Data Protection Lead (to be designated before launch)
 
 ---
@@ -27,6 +27,13 @@
 | Login timestamps | `users.updated_at`, logs | Technical | Indirect | ✅ | ✅ | 7 days (logs) | Leg. interest |
 | Circle name/description | `circles.*` | Social | Possible | ✅ | ✅ | Until deletion | Contract |
 | Circle membership | `circle_memberships.*` | Social | Derived | ✅ | ✅ | Until deletion | Contract |
+| Consent type + version | `consent_records.consent_type`, `.version` | Legal | No | ✅ | ✅ | Art. 5(2) accountability | Legal obligation |
+| Consent text hash | `consent_records.text_version` | Legal | No | ✅ | ✅ | Art. 5(2) accountability | Legal obligation |
+| Consent IP hash | `consent_records.ip_hash` | Legal | Derived | ✅ | ✅ | Art. 5(2) accountability | Legal obligation |
+| Reaction emoji | `reactions.emoji` | Social | No | ✅ | ✅ | Until deletion | Contract |
+| Comment body | `comments.body` | Content | Possible | ✅ | ✅ | Until deletion | Contract |
+| Streak count | `user_streaks.current_streak`, `.longest_streak` | Behavioural | Indirect | ✅ | ✅ | Until deletion | Contract |
+| Last post date | `user_streaks.last_post_date` | Behavioural | Indirect | ✅ | ✅ | Until deletion | Contract |
 
 ---
 

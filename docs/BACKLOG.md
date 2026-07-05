@@ -43,19 +43,33 @@ Priority: P0 (must, M1) → P1 (should, M2) → P2 (nice-to-have, M3+)
 
 ---
 
-## M3 — Engagement (Sprint 4–5)
+## M3 — Trust & Compliance (Sprint 4–5)
 
 | # | Priority | Item | Status |
 |---|----------|------|--------|
-| 26 | P1 | Reactions (emoji palette, limited) | ⬜ Open |
-| 27 | P1 | Comments | ⬜ Open |
-| 28 | P1 | Streak tracking + ethical guard rails | ⬜ Open |
-| 29 | P1 | In-app notifications | ⬜ Open |
-| 30 | P1 | Email digest notifications | ⬜ Open |
-| 31 | P1 | Trust badges on posts | ⬜ Open |
-| 32 | P1 | Report / moderation queue | ⬜ Open |
-| 33 | P2 | Admin dashboard | ⬜ Open |
-| 34 | P2 | Rate limiting (API gateway) | ⬜ Open |
+| 26 | P1 | Reactions (warm emoji palette, no public counters) | ✅ Done |
+| 27 | P1 | Comments (plain-text, max 500 chars) | ✅ Done |
+| 28 | P1 | Streak tracking + grace days (max 2/month, no guilt copy) | ✅ Done |
+| 29 | P1 | Trust badges on posts (based on attestation status) | ✅ Done |
+| 30 | P1 | Authenticity port upgrade (Redis phash, EXIF, timing, gallery) | ✅ Done |
+| 31 | P1 | AttestationUseCase orchestrator | ✅ Done |
+| 32 | P1 | Consent management (versioned, granular, Art. 7 compliant) | ✅ Done |
+| 33 | P1 | GDPR data export (Article 20) | ✅ Done |
+| 34 | P1 | GDPR erasure (Article 17, hard delete + purge job) | ✅ Done |
+| 35 | P1 | Rate limiting (Redis sliding window, auth + write endpoints) | ✅ Done |
+| 36 | P1 | Security headers (HSTS, CSP no-unsafe-inline, X-Frame, etc.) | ✅ Done |
+| 37 | P1 | Alembic migration 0002 (consent, reactions, comments, streaks) | ✅ Done |
+| 38 | P1 | Privacy docs complete (Art. 17/20, consent flows, German summary) | ✅ Done |
+| 39 | P1 | DATA_MAP updated with M3 entities | ✅ Done |
+| 40 | P1 | THREAT_MODEL updated with M3 attack surfaces | ✅ Done |
+| 41 | P1 | ENGAGEMENT.md (streak mechanics + ethical rationale) | ✅ Done |
+| 42 | P1 | TRUST_MODEL.md updated (upgraded heuristics, honest limits) | ✅ Done |
+| 43 | P1 | ADR 003: Consent model | ✅ Done |
+| 44 | P1 | Test suite: consent, GDPR, reactions, comments, streaks | ✅ Done |
+| 45 | P2 | In-app notifications | ⬜ Open |
+| 46 | P2 | Email digest notifications | ⬜ Open |
+| 47 | P2 | Report / moderation queue | ⬜ Open |
+| 48 | P2 | Admin dashboard | ⬜ Open |
 
 ---
 
@@ -63,14 +77,12 @@ Priority: P0 (must, M1) → P1 (should, M2) → P2 (nice-to-have, M3+)
 
 | # | Priority | Item | Status |
 |---|----------|------|--------|
-| 35 | P1 | Structured log shipping | ⬜ Open |
-| 36 | P1 | Prometheus metrics + Grafana | ⬜ Open |
-| 37 | P1 | GDPR data export (Article 20) | ⬜ Open |
-| 38 | P1 | GDPR deletion (Article 17) | ⬜ Open |
-| 39 | P2 | OpenTelemetry tracing | ⬜ Open |
-| 40 | P2 | Pen test scope definition | ⬜ Open |
-| 41 | P2 | Load test (100 RPS target) | ⬜ Open |
-| 42 | P2 | Kubernetes manifests | ⬜ Open |
+| 49 | P1 | Structured log shipping | ⬜ Open |
+| 50 | P1 | Prometheus metrics + Grafana | ⬜ Open |
+| 51 | P2 | OpenTelemetry tracing | ⬜ Open |
+| 52 | P2 | Pen test scope definition | ⬜ Open |
+| 53 | P2 | Load test (100 RPS target) | ⬜ Open |
+| 54 | P2 | Kubernetes manifests | ⬜ Open |
 
 ---
 

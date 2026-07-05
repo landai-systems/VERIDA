@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import Optional
 
@@ -70,6 +70,29 @@ class InviteStatus(str, Enum):
     PENDING = "pending"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+
+
+class ConsentType(str, Enum):
+    """Types of consent that VERIDA requests."""
+
+    TERMS_OF_SERVICE = "terms_of_service"
+    PRIVACY_POLICY = "privacy_policy"
+    DATA_PROCESSING = "data_processing"
+    MARKETING = "marketing"
+
+
+class ReactionEmoji(str, Enum):
+    """Allowed reaction emoji — warm, limited, non-competitive set.
+
+    No counts are shown publicly (MVP). Only the current user's own
+    reactions are returned in API responses.
+    """
+
+    HEART = "\u2764\ufe0f"     # ❤️
+    SMILE = "\U0001f60a"       # 😊
+    FIRE = "\U0001f525"        # 🔥
+    STAR = "\U0001f31f"        # 🌟
+    HUG = "\U0001f917"         # 🤗
 
 
 # ── Core entities ─────────────────────────────────────────────────────────────
@@ -224,3 +247,87 @@ class EmailVerification:
     expires_at: datetime = field(default_factory=_utcnow)
     used_at: Optional[datetime] = None
     created_at: datetime = field(default_factory=_utcnow)
+
+
+# ── M3 entities ───────────────────────────────────────────────────────────────
+
+
+@dataclass
+class ConsentRecord:
+    """A versioned consent record for a user.
+
+    GDPR requires that consent be freely given, specific, informed, and
+    unambiguous.  We store:
+    - ``consent_type``: which type of processing the user consented to
+    - ``version``: semantic version of the consent text shown (e.g. "1.0")
+    - ``text_version``: SHA-256 of the exact consent text shown to the user
+    - ``ip_hash``: truncated to /24 prefix — NOT a full IP address
+    - ``granted_at``: when consent was given; None means it was withdrawn
+    - ``withdrawn_at``: when consent was withdrawn (if applicable)
+
+    Consent records are append-only; withdrawal adds a new record with
+    ``withdrawn_at`` set rather than deleting the grant record.
+    """
+
+    id: uuid.UUID = field(default_factory=_uuid7)
+    user_id: uuid.UUID = field(default_factory=_uuid7)
+    consent_type: ConsentType = ConsentType.TERMS_OF_SERVICE
+    version: str = "1.0"
+    text_version: str = ""    # SHA-256 of consent text shown — proof of what user saw
+    granted_at: datetime = field(default_factory=_utcnow)
+    withdrawn_at: Optional[datetime] = None
+    ip_hash: str = ""         # /24-truncated IP, hashed — never the full address
+    created_at: datetime = field(default_factory=_utcnow)
+
+
+@dataclass
+class Reaction:
+    """A user's reaction to a post.
+
+    MVP constraints (see docs/ENGAGEMENT.md):
+    - Only one reaction of each type per user per post (unique constraint)
+    - NO public reaction counters — only whether the current user reacted
+    - Warm emoji set only — no thumbs down, no negative reactions
+    """
+
+    id: uuid.UUID = field(default_factory=_uuid7)
+    post_id: uuid.UUID = field(default_factory=_uuid7)
+    user_id: uuid.UUID = field(default_factory=_uuid7)
+    emoji: ReactionEmoji = ReactionEmoji.HEART
+    created_at: datetime = field(default_factory=_utcnow)
+
+
+@dataclass
+class Comment:
+    """A plain-text comment on a post.
+
+    Body is limited to 500 characters (enforced at both API and DB layers).
+    No rich text, no markdown, no mentions in MVP.
+    """
+
+    id: uuid.UUID = field(default_factory=_uuid7)
+    post_id: uuid.UUID = field(default_factory=_uuid7)
+    author_id: uuid.UUID = field(default_factory=_uuid7)
+    body: str = ""            # plain-text, max 500 chars
+    created_at: datetime = field(default_factory=_utcnow)
+    deleted_at: Optional[datetime] = None  # soft-delete for author/mod
+
+
+@dataclass
+class UserStreak:
+    """Streak tracking for a user's daily posting habit.
+
+    Grace-day semantics (see docs/ENGAGEMENT.md):
+    - A user may miss up to 2 days per calendar month without losing their streak.
+    - ``grace_days_used_this_month`` resets on the 1st of each month.
+    - NO red-dot badge spam, NO guilt-trip copy — streaks are positive only.
+    - ``last_post_date`` is the calendar date (UTC) of the most recent post.
+    """
+
+    user_id: uuid.UUID = field(default_factory=_uuid7)
+    current_streak: int = 0
+    longest_streak: int = 0
+    grace_days_used_this_month: int = 0
+    last_post_date: Optional[date] = None
+    grace_month: Optional[str] = None   # "YYYY-MM" — tracks which month grace applies to
+    updated_at: datetime = field(default_factory=_utcnow)

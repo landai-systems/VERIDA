@@ -4,20 +4,30 @@
 
 ---
 
-## What VERIDA attests
+## What VERIDA attests (M3 upgraded heuristics)
 
-When a post shows a "PASSED" attestation, it means:
+When a post shows a "PASSED" attestation, it means all of the following
+heuristics passed. **Read the limitations carefully before trusting any of these.**
 
-1. **A SHA-256 hash of the media was recorded at submission time.**  
-   If the media file was altered after upload, the hash would no longer match.
+| Heuristic | What it checks | Can be faked? |
+|-----------|---------------|---------------|
+| `media_hash_present` | SHA-256 hash submitted and valid hex | Yes — client reports its own hash |
+| `mime_type_allowed` | MIME type in approved set (JPEG, PNG, WebP, WebM, MP4) | Yes — trivial to spoof |
+| `capture_duration_plausible` | Reported duration 0.5–60 seconds | Yes — client-reported |
+| `resolution_plausible` | Width/height within camera bounds, aspect ratio sane | Yes — client-reported |
+| `timing_window` | Post published within 20 minutes of server time | Partially — server-side check |
+| `exif_absent` | No EXIF/GPS/camera-model fields in metadata | Partially — client can omit |
+| `phash_unique` | Perceptual hash not seen in Redis in past 7 days | Partially — cropping evades it |
+| `metadata_completeness` | All expected fields present (duration, resolution, captured_at) | Yes — client-reported |
+| `gallery_upload_absent` | No signals indicating file-picker / gallery source | Partially — client can omit |
 
-2. **The MIME type was in the approved set** (JPEG, PNG, WebP, WebM, MP4).
+**Score:** Each heuristic contributes equally. Final score = mean of all heuristic scores.  
+**PASSED** = score ≥ 0.60 | **FLAGGED** = 0.30–0.60 | **REJECTED** = < 0.30
 
-3. **The reported capture metadata (duration, resolution) is within plausible ranges.**
-
-4. **The caption length is within acceptable bounds.**
-
-That is all. These are heuristic checks.
+**Replay detection:** The `phash_unique` check uses a Redis sorted set to track
+perceptual hashes of recent posts. Near-duplicate replays (e.g. uploading the same
+photo twice) are detected. Note: cropping or applying a filter will evade this check.
+This is documented as a limitation, not a security claim.
 
 ---
 
