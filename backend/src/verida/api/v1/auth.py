@@ -32,12 +32,15 @@ from typing import Annotated
 import structlog
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Response, status
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from verida.config import Settings, get_settings
 from verida.domain.entities import RefreshToken, User
+from verida.infrastructure.db.session import get_async_session
+from verida.infrastructure.db.repositories import SqlUserRepository, SqlRefreshTokenRepository
 
 logger = structlog.get_logger(__name__)
 
@@ -46,14 +49,6 @@ router = APIRouter()
 # ── Password hashing ──────────────────────────────────────────────────────────
 # Argon2id with OWASP-recommended parameters (time_cost=2, memory_cost=64 MiB)
 _ph = PasswordHasher(time_cost=2, memory_cost=65536, parallelism=2)
-
-
-# ── In-memory stores (replaced by DB repositories in M2) ─────────────────────
-# These are intentionally simple for M1 scaffolding.
-# They do NOT survive restarts; they are replaced with SQLAlchemy repos in M2.
-_users_by_email: dict[str, User] = {}
-_users_by_id: dict[uuid.UUID, User] = {}
-_refresh_tokens: dict[str, RefreshToken] = {}  # keyed by token_hash
 
 
 # ── Request / Response schemas ────────────────────────────────────────────────
@@ -158,33 +153,50 @@ async def register(
     body: RegisterRequest,
     response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> TokenResponse:
     """Register a new VERIDA account.
 
     On success, returns an access token and sets a httpOnly refresh token cookie.
+    In development mode, users are auto-verified (no email confirmation required).
     """
+    user_repo = SqlUserRepository(session)
+    refresh_repo = SqlRefreshTokenRepository(session)
+
     # Duplicate email check
-    if body.email in _users_by_email:
+    existing = await user_repo.get_by_email(str(body.email))
+    if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists",
         )
 
+    # Also check handle uniqueness
+    existing_handle = await user_repo.get_by_handle(body.handle)
+    if existing_handle is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This handle is already taken",
+        )
+
     # Hash password
     argon2_hash = _ph.hash(body.password)
 
+    # In development, auto-verify users (no email confirmation needed)
+    is_verified = settings.environment == "development"
+
     user = User(
         handle=body.handle,
-        email=body.email,
+        email=str(body.email),
         display_name=body.display_name,
         argon2_hash=argon2_hash,
+        is_verified=is_verified,
     )
-    _users_by_email[user.email] = user
-    _users_by_id[user.id] = user
+    await user_repo.save(user)
 
     access_token, expires_in = _create_access_token(user.id, settings)
     raw_refresh, refresh_entity = _create_refresh_token(user.id, settings)
-    _refresh_tokens[refresh_entity.token_hash] = refresh_entity
+    await refresh_repo.save(refresh_entity)
 
     _set_refresh_cookie(response, raw_refresh, settings)
 
@@ -201,6 +213,7 @@ async def login(
     body: LoginRequest,
     response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> TokenResponse:
     """Login with email and password.
 
@@ -210,7 +223,10 @@ async def login(
     """
     _INVALID_MSG = "Invalid email or password"
 
-    user = _users_by_email.get(body.email)
+    user_repo = SqlUserRepository(session)
+    refresh_repo = SqlRefreshTokenRepository(session)
+
+    user = await user_repo.get_by_email(str(body.email))
     if user is None:
         # Perform a dummy hash to prevent timing attacks on user enumeration
         _ph.hash("dummy-password-for-timing-protection")
@@ -228,10 +244,11 @@ async def login(
     if _ph.check_needs_rehash(user.argon2_hash):
         user.argon2_hash = _ph.hash(body.password)
         user.updated_at = datetime.now(UTC)
+        await user_repo.save(user)
 
     access_token, expires_in = _create_access_token(user.id, settings)
     raw_refresh, refresh_entity = _create_refresh_token(user.id, settings)
-    _refresh_tokens[refresh_entity.token_hash] = refresh_entity
+    await refresh_repo.save(refresh_entity)
 
     _set_refresh_cookie(response, raw_refresh, settings)
 
@@ -247,6 +264,7 @@ async def login(
 async def refresh(
     response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
     refresh_token: Annotated[str | None, Cookie(alias="verida_refresh")] = None,
 ) -> TokenResponse:
     """Issue a new access token using a valid refresh token.
@@ -262,21 +280,26 @@ async def refresh(
         raise _INVALID
 
     token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
-    stored = _refresh_tokens.get(token_hash)
+
+    user_repo = SqlUserRepository(session)
+    refresh_repo = SqlRefreshTokenRepository(session)
+
+    stored = await refresh_repo.get_by_token_hash(token_hash)
 
     if stored is None or stored.revoked or stored.expires_at < datetime.now(UTC):
         raise _INVALID
 
     # Revoke old token (rotation)
     stored.revoked = True
+    await refresh_repo.save(stored)
 
-    user = _users_by_id.get(stored.user_id)
+    user = await user_repo.get_by_id(stored.user_id)
     if user is None or not user.is_active:
         raise _INVALID
 
     access_token, expires_in = _create_access_token(user.id, settings)
     raw_refresh, new_entity = _create_refresh_token(user.id, settings)
-    _refresh_tokens[new_entity.token_hash] = new_entity
+    await refresh_repo.save(new_entity)
 
     _set_refresh_cookie(response, raw_refresh, settings)
 
@@ -292,17 +315,16 @@ async def refresh(
 async def logout(
     response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
     refresh_token: Annotated[str | None, Cookie(alias="verida_refresh")] = None,
 ) -> None:
     """Logout — revoke the current refresh token and clear the cookie."""
     if refresh_token:
         token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
-        stored = _refresh_tokens.get(token_hash)
+        refresh_repo = SqlRefreshTokenRepository(session)
+        stored = await refresh_repo.get_by_token_hash(token_hash)
         if stored:
-            # Revoke all tokens for this user
-            for t in _refresh_tokens.values():
-                if t.user_id == stored.user_id:
-                    t.revoked = True
+            await refresh_repo.revoke_all_for_user(stored.user_id)
             logger.info("user_logout", user_id=str(stored.user_id))
 
     # Clear cookie regardless
@@ -316,7 +338,8 @@ async def logout(
 )
 async def me(
     settings: Annotated[Settings, Depends(get_settings)],
-    authorization: str | None = None,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    authorization: Annotated[str | None, Header()] = None,
 ) -> UserResponse:
     """Return the profile of the currently authenticated user.
 
@@ -328,7 +351,8 @@ async def me(
     token = authorization.removeprefix("Bearer ")
     user_id = _decode_access_token(token, settings)
 
-    user = _users_by_id.get(user_id)
+    user_repo = SqlUserRepository(session)
+    user = await user_repo.get_by_id(user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -354,7 +378,7 @@ def _set_refresh_cookie(response: Response, raw_token: str, settings: Settings) 
         value=raw_token,
         httponly=True,
         secure=settings.environment != "development",
-        samesite="strict",
+        samesite="lax",  # lax allows cross-origin (dev proxy setup)
         max_age=max_age,
         path="/api/v1/auth",
     )

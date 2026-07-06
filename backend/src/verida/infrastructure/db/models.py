@@ -28,6 +28,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import JSON as _SAJSON
+
+
+# Use JSONB on PostgreSQL, JSON on other databases (e.g. SQLite for tests)
+def _json_col() -> JSONB:
+    """Return JSONB for PostgreSQL, plain JSON for other dialects."""
+    return JSONB().with_variant(_SAJSON(), "sqlite")
 
 
 class Base(DeclarativeBase):
@@ -171,7 +178,7 @@ class AttestationModel(Base):
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    details: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    details: Mapped[dict] = mapped_column(_json_col(), nullable=False, default=dict)
     checked_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -200,7 +207,7 @@ class PostModel(Base):
     media_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     media_mime_type: Mapped[str] = mapped_column(String(50), nullable=False)
     visibility: Mapped[str] = mapped_column(String(20), nullable=False, default="circles")
-    capture_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    capture_metadata: Mapped[dict] = mapped_column(_json_col(), nullable=False, default=dict)
     is_late: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     published_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
