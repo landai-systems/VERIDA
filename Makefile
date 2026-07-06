@@ -24,11 +24,11 @@ lint:
 
 # ── Database migrations ───────────────────────────────────────────────────────
 migrate:
-	docker compose exec -w /app api alembic upgrade head
+	docker compose exec -w /app api alembic -c /app/alembic.ini upgrade head
 
 migrate-new:
 	@read -p "Migration message: " msg; \
-	docker compose exec -w /app api alembic revision --autogenerate -m "$$msg"
+	docker compose exec -w /app api alembic -c /app/alembic.ini revision --autogenerate -m "$$msg"
 
 # ── Interactive shell ─────────────────────────────────────────────────────────
 shell:
