@@ -60,7 +60,7 @@ class UserModel(Base):
         back_populates="owner", lazy="noload"
     )
     memberships: Mapped[list["CircleMembershipModel"]] = relationship(
-        back_populates="user", lazy="noload"
+        back_populates="user", foreign_keys="CircleMembershipModel.user_id", lazy="noload"
     )
     refresh_tokens: Mapped[list["RefreshTokenModel"]] = relationship(
         back_populates="user", lazy="noload"
