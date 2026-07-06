@@ -8,13 +8,13 @@ services:
       - "8000:8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
-      SECRET_KEY: ${SECRET_KEY}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production-min32chars}
       DATABASE_URL: postgresql+asyncpg://verida:verida@db:5432/verida
       REDIS_URL: redis://redis:6379/0
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       LOG_LEVEL: ${LOG_LEVEL:-INFO}

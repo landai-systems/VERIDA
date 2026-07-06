@@ -80,10 +80,22 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def split_cors_origins(cls, v: str | list[str]) -> list[str]:
-        """Accept a comma-separated string or a list."""
+    def split_cors_origins(cls, v: str | list[str] | None) -> list[str]:
+        """Accept a comma-separated string, a list, or None."""
+        if v is None or v == "":
+            return ["http://localhost:5173", "http://localhost:3000"]
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
+            stripped = v.strip()
+            if not stripped:
+                return ["http://localhost:5173"]
+            # If it looks like a JSON array, parse it
+            if stripped.startswith("["):
+                import json
+                try:
+                    return json.loads(stripped)
+                except json.JSONDecodeError:
+                    pass
+            return [origin.strip() for origin in stripped.split(",") if origin.strip()]
         return v
 
     @field_validator("secret_key")
