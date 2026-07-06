@@ -6,7 +6,6 @@ build-backend = "setuptools.backends.legacy:build"
 name = "verida"
 version = "0.1.0"
 description = "VERIDA — Proof-of-Human Social Web"
-readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "AGPL-3.0-or-later" }
 dependencies = [
@@ -25,6 +24,8 @@ dependencies = [
     "uuid6>=2022.10.25",
     "email-validator>=2.1.1",
     "python-multipart>=0.0.9",
+    "aiosmtplib>=3.0.0",
+    "Pillow>=10.0.0",
 ]
 
 [project.optional-dependencies]
@@ -32,69 +33,13 @@ dev = [
     "pytest>=8.2.0",
     "pytest-asyncio>=0.23.6",
     "pytest-cov>=5.0.0",
-    "testcontainers[postgresql,redis]>=4.5.0",
     "ruff>=0.4.4",
     "mypy>=1.10.0",
     "bandit[toml]>=1.7.8",
-    "pip-audit>=2.7.3",
-    "types-redis>=4.6.0",
     "httpx>=0.27.0",
+    "faker>=25.0.0",
 ]
 
+# Build context is ./backend — src/ is at the root of the context
 [tool.setuptools.packages.find]
-where = ["backend/src"]
-
-# ── Ruff ─────────────────────────────────────────────────────────────────────
-[tool.ruff]
-target-version = "py312"
-line-length = 99
-src = ["backend/src", "backend/tests"]
-
-[tool.ruff.lint]
-select = [
-    "E", "W",   # pycodestyle
-    "F",        # pyflakes
-    "I",        # isort
-    "N",        # pep8-naming
-    "UP",       # pyupgrade
-    "S",        # bandit (ruff port)
-    "B",        # flake8-bugbear
-    "A",        # flake8-builtins
-    "C4",       # flake8-comprehensions
-    "PTH",      # flake8-use-pathlib
-    "RUF",      # ruff-specific
-]
-ignore = [
-    "S101",  # assert in tests is fine
-    "S104",  # bind to 0.0.0.0 inside Docker is intentional
-]
-
-[tool.ruff.lint.per-file-ignores]
-"backend/tests/**" = ["S", "N"]
-
-# ── mypy ─────────────────────────────────────────────────────────────────────
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-ignore_missing_imports = true
-mypy_path = "backend/src"
-
-# ── pytest ───────────────────────────────────────────────────────────────────
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["backend/tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = [
-    "--tb=short",
-    "-v",
-    "--strict-markers",
-]
-
-# ── bandit ───────────────────────────────────────────────────────────────────
-[tool.bandit]
-targets = ["backend/src"]
-skips = ["B101"]
+where = ["src"]
