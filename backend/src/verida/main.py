@@ -28,7 +28,6 @@ logger = structlog.get_logger(__name__)
 def _configure_logging(log_level: str) -> None:
     """Configure structlog for JSON output in all environments."""
     import logging
-    import structlog
 
     logging.basicConfig(
         format="%(message)s",
@@ -49,7 +48,7 @@ def _configure_logging(log_level: str) -> None:
             getattr(logging, log_level, logging.INFO)
         ),
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
 
