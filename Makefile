@@ -24,15 +24,15 @@ lint:
 
 # ── Database migrations ───────────────────────────────────────────────────────
 migrate:
-	docker compose exec api alembic upgrade head
+	docker compose exec -w /app api alembic upgrade head
 
 migrate-new:
 	@read -p "Migration message: " msg; \
-	docker compose exec api alembic revision --autogenerate -m "$$msg"
+	docker compose exec -w /app api alembic revision --autogenerate -m "$$msg"
 
 # ── Interactive shell ─────────────────────────────────────────────────────────
 shell:
-	docker compose exec api python -c "import IPython; IPython.embed()"
+	docker compose exec -w /app api python -c "import IPython; IPython.embed()"
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 build-fe:
@@ -44,7 +44,7 @@ install:
 
 # ── Seed & Lighthouse ─────────────────────────────────────────────────────────
 seed:
-	docker compose exec api python scripts/seed.py
+	docker compose exec -w /app api python scripts/seed.py
 
 lighthouse:
 	@echo "Lighthouse CI instructions:"
