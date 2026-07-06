@@ -113,7 +113,6 @@ Thumbs.db
 *.swo
 
 # Alembic
-backend/alembic.ini
 backend/alembic/versions/*.pyc
 
 # Coverage / Reports
