@@ -6,6 +6,7 @@ build-backend = "setuptools.backends.legacy:build"
 name = "verida"
 version = "0.1.0"
 description = "VERIDA — Proof-of-Human Social Web"
+readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "AGPL-3.0-or-later" }
 dependencies = [
