@@ -2,29 +2,40 @@ type Status = 'passed' | 'failed' | 'pending'
 
 const config: Record<Status, { label: string; icon: string; classes: string }> = {
   passed: {
-    label: 'Human-verified',
+    label: 'Verified',
     icon: '✓',
-    classes: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+    classes:
+      'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
   },
   failed: {
-    label: 'Unverified',
+    label: 'Flagged',
     icon: '⚠',
-    classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+    classes:
+      'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
   },
   pending: {
     label: 'Pending',
-    icon: '⏳',
-    classes: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+    icon: '',
+    classes:
+      'bg-slate-500/20 text-slate-400 border border-slate-500/30',
   },
 }
 
-interface Props { status: Status }
+interface Props {
+  status: Status
+}
 
 export default function AttestationBadge({ status }: Props) {
   const { label, icon, classes } = config[status]
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${classes}`}>
-      <span aria-hidden="true">{icon}</span>
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${classes}`}
+    >
+      {status === 'pending' ? (
+        <span className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+      ) : (
+        <span aria-hidden="true">{icon}</span>
+      )}
       {label}
     </span>
   )

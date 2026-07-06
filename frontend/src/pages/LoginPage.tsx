@@ -25,16 +25,20 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">VERIDA</h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Proof-of-Human Social Web</p>
-        </div>
+    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-[#080810]">
+      {/* Logo */}
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-black text-white tracking-tight">VERIDA</h1>
+        <p className="mt-2 text-sm text-slate-500">Real humans, real moments.</p>
+      </div>
 
-        <form onSubmit={submit} className="space-y-5" noValidate>
+      {/* Card */}
+      <div className="w-full max-w-sm backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8 shadow-[0_0_40px_rgba(99,102,241,0.1)]">
+        <h2 className="text-lg font-semibold text-white mb-6">Sign in</h2>
+
+        <form onSubmit={submit} className="space-y-4" noValidate>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+            <label htmlFor="email" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">
               Email
             </label>
             <input
@@ -44,13 +48,13 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition"
+              className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-full transition-colors"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+            <label htmlFor="password" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">
               Password
             </label>
             <input
@@ -60,29 +64,37 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition"
+              className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-full transition-colors"
               placeholder="••••••••"
             />
           </div>
 
           {error && (
-            <p role="alert" className="text-sm text-red-500 dark:text-red-400 text-center">
+            <div role="alert" className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full px-4 py-2 text-sm">
+              <span className="text-base">⚠</span>
               {error}
-            </p>
+            </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-xl font-semibold transition"
+            className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl w-full transition-all duration-200 flex items-center justify-center gap-2 mt-2"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Signing in…
+              </>
+            ) : (
+              'Sign in'
+            )}
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-center text-sm text-slate-500 mt-6">
           No account?{' '}
-          <Link to="/register" className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
+          <Link to="/register" className="text-indigo-400 font-medium hover:text-indigo-300 transition-colors">
             Sign up free
           </Link>
         </p>
