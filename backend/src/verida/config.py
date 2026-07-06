@@ -60,8 +60,9 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = 30
 
     # ── CORS ───────────────────────────────────────────────────────────────────
-    # Comma-separated list; parsed into a list by the validator below.
-    cors_origins: list[str] = ["http://localhost:5173"]
+    # Comma-separated string from env; converted to list[str] by cors_origins_list property.
+    # Declared as str to prevent pydantic-settings v2 from attempting JSON-decode.
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     # ── Email ──────────────────────────────────────────────────────────────────
     smtp_host: str = "localhost"
@@ -72,31 +73,27 @@ class Settings(BaseSettings):
 
     # ── Observability ──────────────────────────────────────────────────────────
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
-
-    # ── Feature flags ──────────────────────────────────────────────────────────
-    enable_authenticity_check: bool = True
+    # ── CORS ───────────────────────────────────────────────────────────────────
+    # Comma-separated string from env; converted to list[str] by validator.
+    # Declared as str to prevent pydantic-settings v2 from attempting JSON-decode.
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     # ── Validators ────────────────────────────────────────────────────────────
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def split_cors_origins(cls, v: str | list[str] | None) -> list[str]:
-        """Accept a comma-separated string, a list, or None."""
+    def split_cors_origins(cls, v: object) -> str:
+        """Normalise to a comma-separated string; list inputs are joined."""
         if v is None or v == "":
-            return ["http://localhost:5173", "http://localhost:3000"]
-        if isinstance(v, str):
-            stripped = v.strip()
-            if not stripped:
-                return ["http://localhost:5173"]
-            # If it looks like a JSON array, parse it
-            if stripped.startswith("["):
-                import json
-                try:
-                    return json.loads(stripped)
-                except json.JSONDecodeError:
-                    pass
-            return [origin.strip() for origin in stripped.split(",") if origin.strip()]
-        return v
+            return "http://localhost:5173,http://localhost:3000"
+        if isinstance(v, list):
+            return ",".join(str(o) for o in v)
+        return str(v)
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Return CORS origins as a parsed list (use this in app code)."""
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @field_validator("secret_key")
     @classmethod
